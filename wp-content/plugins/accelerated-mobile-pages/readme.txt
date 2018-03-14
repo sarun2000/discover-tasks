@@ -4,7 +4,7 @@ Tags: AMP, accelerated mobile pages, mobile, amp project, google amp, amp wp, go
 Donate link: https://www.paypal.me/Kaludi/25
 Requires at least: 3.0
 Tested up to: 4.9.4
-Stable tag: 0.9.83
+Stable tag: 0.9.83.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -181,6 +181,22 @@ You can contact us from [here](http://ampforwp.com/contact/)
 
 
 == Changelog ==
+
+= 0.9.83.1 (8th March 2018) =
+* Fixed: Pagebuilder contents not shows on custom home page #1794
+* Added: Header hook added `ampforwp_advance_header_layout_options`
+* Fixed: Load admin files only in admin pages #1799
+* Fixed: Conflict with WP bakery pagebuilder #1783
+* Fixed: Slide in Menu break in RTL mode #1825
+* Fixed: Validation issue in loops due to empty attributes #1795
+* Fixed: Featrued Image connected Properly with Swift theme #1733
+* Fixed: Changed the disqus.php to disqus.html to pass authentication #1788 
+* Added: CSS styling for Loop on shop page #1803 
+* Fixed: Facebook comments not work in swift #1789
+* Fixed: Style AMP Category module in Footer swift #1790
+* Fixed: Load aq_resizer only in AMP #1805 
+* Fixed: Proper markup for Pinterest in Design3 and Swift #1793
+* Fixed: Proper url for vk
 
 = 0.9.83 (03rd March 2018) =
 * Added: Ability to add amp-carousel and amp-selector directly into WYSIWYG Editor #1588
