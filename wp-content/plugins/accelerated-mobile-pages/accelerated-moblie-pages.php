@@ -3,7 +3,7 @@
 Plugin Name: Accelerated Mobile Pages
 Plugin URI: https://wordpress.org/plugins/accelerated-mobile-pages/
 Description: AMP for WP - Accelerated Mobile Pages for WordPress
-Version: 0.9.85.2
+Version: 0.9.86.2
 Author: Ahmed Kaludi, Mohammed Kaludi
 Author URI: https://ampforwp.com/
 Donate link: https://www.paypal.me/Kaludi/25
@@ -19,7 +19,7 @@ define('AMPFORWP_PLUGIN_DIR_URI', plugin_dir_url(__FILE__));
 define('AMPFORWP_DISQUS_URL',plugin_dir_url(__FILE__).'includes/disqus.html');
 define('AMPFORWP_IMAGE_DIR',plugin_dir_url(__FILE__).'images');
 define('AMPFORWP_MAIN_PLUGIN_DIR', plugin_dir_path( __DIR__ ) );
-define('AMPFORWP_VERSION','0.9.85.2');
+define('AMPFORWP_VERSION','0.9.86.2');
 
 // any changes to AMP_QUERY_VAR should be refelected here
 function ampforwp_generate_endpoint(){
@@ -95,7 +95,9 @@ function ampforwp_add_custom_rewrite_rules() {
         'index.php?amp&paged=$matches[1]',
         'top'
     );
+
 	// For /Blog page with Pagination
+	if( ampforwp_name_blog_page() ) {
 	    add_rewrite_rule(
 	        ampforwp_name_blog_page(). '/amp/page/([0-9]{1,})/?$',
 	        'index.php?amp&paged=$matches[1]&page_id=' .ampforwp_get_the_page_id_blog_page(),
@@ -107,6 +109,7 @@ function ampforwp_add_custom_rewrite_rules() {
 	        'index.php?amp&paged=$matches[2]&page_id=' .ampforwp_get_the_page_id_blog_page(),
 	        'top'
 	    );
+	}
 
     // For Author pages
     add_rewrite_rule(
@@ -114,7 +117,6 @@ function ampforwp_add_custom_rewrite_rules() {
         'index.php?amp&author_name=$matches[1]',
         'top'
     );
-
     add_rewrite_rule(
         'author\/([^/]+)\/amp\/page\/?([0-9]{1,})\/?$',
         'index.php?amp=1&author_name=$matches[1]&paged=$matches[2]',
@@ -188,23 +190,36 @@ function ampforwp_add_custom_rewrite_rules() {
 	$output = 'names'; // or objects
 	$operator = 'and'; // 'and' or 'or'
 	$taxonomies = get_taxonomies( $args, $output, $operator ); 
+
+
+	if( class_exists( 'WooCommerce' ) ) {
+		$wc_permalinks 	= get_option( 'woocommerce_permalinks' );
+		
+		if ( $wc_permalinks ) {
+			$taxonomies = array_merge($taxonomies, $wc_permalinks);
+		}
+	}
+
+	$taxonomies = apply_filters( 'ampforwp_modify_rewrite_tax', $taxonomies );
 	if ( $taxonomies ) {
-	  foreach ( $taxonomies  as $taxonomy ) {   
-	    add_rewrite_rule(
-	      $taxonomy.'\/(.+?)\/amp/?$',
-	      'index.php?amp&'.$taxonomy.'=$matches[1]',
-	      'top'
-	    );
-	    // For Custom Taxonomies with pages
-	    add_rewrite_rule(
-	      $taxonomy.'\/(.+?)\/amp\/page\/?([0-9]{1,})\/?$',
-	      'index.php?amp&'.$taxonomy.'=$matches[1]&paged=$matches[2]',
-	      'top'
-	    );
-	  }
+		foreach ( $taxonomies  as $key => $taxonomy ) { 
+			if ( ! empty( $taxonomy ) ) {
+			    add_rewrite_rule(
+			      $taxonomy.'\/(.+?)\/amp/?$',
+			      'index.php?amp&'.$key.'=$matches[1]',
+			      'top'
+			    );
+			    // For Custom Taxonomies with pages
+			    add_rewrite_rule(
+			      $taxonomy.'\/(.+?)\/amp\/page\/?([0-9]{1,})\/?$',
+			      'index.php?amp&'.$taxonomy.'=$matches[1]&paged=$matches[2]',
+			      'top'
+			    );
+			}
+		}
 	}
 }
-add_action( 'init', 'ampforwp_add_custom_rewrite_rules' );
+add_action( 'admin_init', 'ampforwp_add_custom_rewrite_rules' );
 
 register_activation_hook( __FILE__, 'ampforwp_rewrite_activation', 20 );
 function ampforwp_rewrite_activation() {
@@ -231,6 +246,20 @@ function ampforwp_rewrite_activation() {
 	set_transient( 'ampforwp_welcome_screen_activation_redirect', true, 30 );
 
 }
+
+add_action( 'admin_init', 'ampforwp_flush_after_update');
+function ampforwp_flush_after_update() {
+	// Flushing rewrite urls ONLY on after Update is installed
+	$older_version = "";
+	$older_version = get_transient('ampforwp_current_version_check');
+	if ( empty($older_version) || ( $older_version <  AMPFORWP_VERSION ) ) {
+		flush_rewrite_rules();
+		global $wp_rewrite;
+		$wp_rewrite->flush_rules();
+		set_transient('ampforwp_current_version_check', AMPFORWP_VERSION);
+	}
+}
+
 
 add_action('init', 'ampforwp_flush_rewrite_by_option', 20);
 
@@ -487,6 +516,10 @@ if ( ! function_exists('ampforwp_init') ) {
 function amp_update_db_check() {
 	global $redux_builder_amp;
 	$ampforwp_current_version = AMPFORWP_VERSION;
+	if ( isset( $_GET['ampforwp-dismiss-theme'] ) && trim( $_GET['ampforwp-dismiss-theme']) === "ampforwp_dismiss_admin_notices" ) {
+		update_option( 'ampforwp_theme_notice', true );
+		wp_redirect("admin.php?page=amp_options");
+	}
    	if ( get_option( 'AMPforwp_db_version' ) !== $ampforwp_current_version ) {
 
    		if ( isset( $_GET['ampforwp-dismiss'] ) && trim( $_GET['ampforwp-dismiss']) === "ampforwp_dismiss_admin_notices" ) {
@@ -500,6 +533,27 @@ function amp_update_db_check() {
     }
 }
 add_action( 'plugins_loaded', 'amp_update_db_check' );
+
+// Admin notice for AMP WordPress Theme
+add_action('admin_notices', 'ampforwp_ampwptheme_notice');
+function ampforwp_ampwptheme_notice() {
+ 	$theme = '';
+	$theme = wp_get_theme(); // gets the current theme
+
+	if ( ('AMP WordPress Theme' == $theme->name || 'AMP WordPress Theme' == $theme->parent_theme) && true != get_option('ampforwp_theme_notice') ) {    
+		add_thickbox(); ?>
+		<div id="some" class="notice-warning settings-error notice is-dismissible">
+			<span style="margin: 0.5em 0.5em 0 0">AMP WordPress Theme is installed</span><br>
+			<span style="margin: 0.5em 0.5em 0 0">One Last Step Required: <a href="#TB_inline?width=600&height=550&inlineId=my-content-id" class="thickbox">Finish Setup</a></span><br>
+		</div>
+		<div id="my-content-id" style="display:none;">
+	     <p>
+	     	<iframe width="100%" height="480" src="https://www.youtube.com/embed/" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+			<a href="<?php echo esc_url(add_query_arg( 'ampforwp-dismiss-theme', 'ampforwp_dismiss_admin_notices' )) ?>">Take me to the Options Panel</a>
+	     </p>
+		</div>
+	<?php }
+}
 
 function ampforwp_update_notice() {
 	$screen = '';

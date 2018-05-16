@@ -87,6 +87,7 @@ class AMP_Blacklist_Sanitizer extends AMP_Base_Sanitizer {
 				if ( $element->hasAttributes() ) {
 					$attr = $element->getAttribute('type');
 					if ( '' !== $attr && 'application/ld+json' === $attr ) {
+						$element->nodeValue = $element->textContent;
 						continue;
 					}
 				}
@@ -203,7 +204,7 @@ class AMP_Blacklist_Sanitizer extends AMP_Base_Sanitizer {
 	}
 
 	private function get_blacklisted_tags() {
-		return $this->merge_defaults_with_args( 'add_blacklisted_tags', array(
+		return $this->merge_defaults_with_args( 'add_blacklisted_tags', apply_filters('amp_blacklisted_tags' , array(
 			'script',
 			'noscript',
 			'style',
@@ -234,7 +235,7 @@ class AMP_Blacklist_Sanitizer extends AMP_Base_Sanitizer {
 			//'video',
 			//'audio',
 			//'iframe',
-		) );
+		) ) );
 	}
 
 	private function get_blacklisted_attributes() {
